@@ -13,7 +13,7 @@ export default class WooWorker {
     url,
     consumerKey,
     consumerSecret,
-    wp_api = true,
+    wpAPI = true,
     version = "wc/v2",
     queryStringAuth = true,
     language
@@ -23,7 +23,7 @@ export default class WooWorker {
         url,
         consumerKey,
         consumerSecret,
-        wp_api,
+        wpAPI,
         version,
         queryStringAuth,
         language
@@ -101,7 +101,7 @@ export default class WooWorker {
         purchasable: true,
         status: "publish",
         orderby: "date",
-        order: "asc"
+        order: "desc"
       };
       if (category != "") {
         params = { ...params, category };
@@ -120,9 +120,9 @@ export default class WooWorker {
       console.log(err);
     }
   };
-  static reviewsByProductId = async id => {
+  static reviewsByProductId = async (id, version) => {
     try {
-      const response = await this._api.get(`products/${id}/reviews`);
+      const response = await this._api.get(`products/${id}/reviews`, undefined, version);
       return response.json();
     } catch (err) {
       console.log(err);
@@ -234,7 +234,7 @@ export default class WooWorker {
       if (json.id != 'undefined') {
         this._api.post(`orders/${json.id}`, {status: 'processing'});
       }
-      
+
       if (json.code === undefined) {
         callback(json);
       } else {
