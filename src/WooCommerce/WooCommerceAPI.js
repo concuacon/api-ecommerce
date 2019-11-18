@@ -5,6 +5,7 @@
  */
 
 import OAuth from "oauth-1.0a";
+import CryptoJS from 'crypto-js';
 
 function WooCommerceAPI(opt) {
   if (!(this instanceof WooCommerceAPI)) {
@@ -67,9 +68,10 @@ WooCommerceAPI.prototype._normalizeQueryString = function(url) {
   return `${url.split("?")[0]}?${queryString}`;
 };
 
-WooCommerceAPI.prototype._getUrl = function(endpoint) {
+WooCommerceAPI.prototype._getUrl = function(endpoint, version) {
   let url = this.url.slice(-1) === "/" ? this.url : `${this.url}/`;
   const api = this.wpAPI ? `${this.wpAPIPrefix}/` : "wp-json/";
+  this.version = version ? version : "wc/v3";
 
   url = `${url + api + this.version}/${endpoint}/`;
 
@@ -87,10 +89,13 @@ WooCommerceAPI.prototype._getUrl = function(endpoint) {
 WooCommerceAPI.prototype._getOAuth = function() {
   const data = {
     consumer: {
-      public: this.consumerKey,
-      secret: this.consumerSecret,
+      key: this.consumerKey,
+      secret: this.consumerSecret
     },
-    signature_method: "HMAC-SHA256",
+    signature_method: 'HMAC-SHA256',
+    hash_function: function(base_string, key) {
+      return CryptoJS.HmacSHA256(base_string, key).toString(CryptoJS.enc.Base64);
+    }
   };
 
   if (["v1", "v2"].indexOf(this.version) > -1) data.last_ampersand = false;
@@ -108,8 +113,8 @@ WooCommerceAPI.prototype.join = function(obj, separator) {
   return arr.join(separator);
 };
 
-WooCommerceAPI.prototype._request = async function(method, endpoint, newData) {
-  const url = this._getUrl(endpoint);
+WooCommerceAPI.prototype._request = async function(method, endpoint, newData, version=null) {
+  const url = this._getUrl(endpoint, version);
   let data = {
     ...newData,
     lang: this.language,
@@ -160,15 +165,23 @@ WooCommerceAPI.prototype._request = async function(method, endpoint, newData) {
   } else if (method == "POST") {
     params.headers = {
       Accept: "application/json",
+      'Cache-Control': 'no-cache',
       "Content-Type": "application/json",
     };
     params.body = JSON.stringify(data);
   }
-  return await fetch(params.url, params);
+
+  console.log(params.url);
+
+  return await fetch(params.url, params)
+        .catch((error, data) => {
+            console.log('error network -', error, data);
+        }
+      );
 };
 
-WooCommerceAPI.prototype.get = async function(endpoint, data, callback) {
-  return await this._request("GET", endpoint, data, callback);
+WooCommerceAPI.prototype.get = async function(endpoint, data, version) {
+  return await this._request("GET", endpoint, data, version);
 };
 
 WooCommerceAPI.prototype.post = async function(endpoint, data, callback) {
